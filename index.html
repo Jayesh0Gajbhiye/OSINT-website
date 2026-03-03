@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>WorldView OSINT - Globe</title>
+  <script src="https://cesium.com/downloads/cesiumjs/releases/1.119/Build/Cesium/Cesium.js"></script>
+  <link href="https://cesium.com/downloads/cesiumjs/releases/1.119/Build/Cesium/Widgets/widgets.css" rel="stylesheet">
+  <style>
+    html, body, #cesiumContainer { margin: 0; padding: 0; height: 100%; overflow: hidden; background: #000; }
+  </style>
+</head>
+<body>
+  <div id="cesiumContainer"></div>
+  <script>
+    // Get your free Cesium ion token here: https://cesium.com/ion/ (sign up, it's quick)
+    Cesium.Ion.defaultAccessToken = 'your-token-here';  // <-- replace this!
+
+    const viewer = new Cesium.Viewer('cesiumContainer', {
+      terrain: Cesium.Terrain.fromWorldTerrain(),
+      imageryProvider: false,  // we'll use Google's instead
+      baseLayerPicker: false,
+      geocoder: false,
+      homeButton: false,
+      sceneModePicker: false,
+      navigationHelpButton: false,
+      timeline: false,
+      fullscreenButton: false,
+      vrButton: false
+    });
+
+    // Load Google Photorealistic 3D Tiles (free tier: ~1,000 tiles/month—good for testing)
+    async function loadPhotoreal() {
+      try {
+        const tileset = await Cesium.createGooglePhotorealistic3DTileset();
+        viewer.scene.primitives.add(tileset);
+        viewer.flyTo(tileset);  // zoom to somewhere cool
+      } catch (err) {
+        console.error('Tiles failed:', err);
+      }
+    }
+    loadPhotoreal();
+
+    // Quick CRT glitch tease—add later with PostProcessStage
+    viewer.scene.postProcessStages.add(new Cesium.PostProcessStage({
+      fragmentShader: `
+        uniform sampler2D colorTexture;
+        varying vec2 v_textureCoordinates;
+        void main() {
+          vec4 color = texture2D(colorTexture, v_textureCoordinates);
+          // Add scanlines, noise, aberration here—placeholder for now
+          color.rgb *= 0.9 + 0.1 * sin(v_textureCoordinates.y * 800.0);
+          gl_FragColor = color;
+        }
+      `
+    }));
+  </script>
+</body>
+</html>
