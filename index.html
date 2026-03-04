@@ -11,6 +11,7 @@
       margin: 0;
       padding: 0;
       overflow: hidden;
+      background: #000;
     }
   </style>
 </head>
@@ -18,19 +19,34 @@
   <div id="cesiumContainer"></div>
 
   <script>
-    // Get a free token from https://cesium.com/ion/ (sign up, copy the default one)
-    Cesium.Ion.defaultAccessToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiIzZjgyMzUyOC0wOGZmLTQ3ODYtYmEyMi03MzJmY2NlNzRjZWMiLCJpZCI6Mzk3ODUwLCJpYXQiOjE3NzI2MTk4ODB9.Dw4OwCm6QyXl0jY5FXbogc-WlxGav8GtWP-1ArikgOE';  // <-- paste yours here!
+    // YOUR TOKEN HERE—paste the long eyJ... string from Cesium ion
+    Cesium.Ion.defaultAccessToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiIzZjgyMzUyOC0wOGZmLTQ3ODYtYmEyMi03MzJmY2NlNzRjZWMiLCJpZCI6Mzk3ODUwLCJpYXQiOjE3NzI2MTk4ODB9.Dw4OwCm6QyXl0jY5FXbogc-WlxGav8GtWP-1ArikgOE';
 
+    // Create the viewer
     const viewer = new Cesium.Viewer('cesiumContainer', {
-      terrain: Cesium.Terrain.fromWorldTerrain(),
-      imageryProvider: new Cesium.OpenStreetMapImageryProvider({
-        url: 'https://tile.openstreetmap.org/'
-      })
+      terrain: Cesium.Terrain.fromWorldTerrain(),  // real hills
+      imageryProvider: false,                      // no flat map
+      baseLayerPicker: false,                      // hide picker
+      geocoder: Cesium.IonGeocodeProviderType.GOOGLE,  // city search
+      fullscreenButton: false                      // optional
     });
 
-    // Optional: zoom to somewhere cool
+    // Add photorealistic 3D buildings—like Google Earth
+    async function addPhotoreal() {
+      try {
+        const tileset = await Cesium.createGooglePhotorealistic3DTileset();
+        viewer.scene.primitives.add(tileset);
+        // Auto-zoom to a nice spot (you can change coords)
+        viewer.zoomTo(tileset);
+      } catch (err) {
+        console.log('Photoreal load issue:', err);
+      }
+    }
+    addPhotoreal();
+
+    // Start zoomed in somewhere cool—edit degrees if you want
     viewer.camera.flyTo({
-      destination: Cesium.Cartesian3.fromDegrees(78.96, 20.59, 8000000)  // India-ish view
+      destination: Cesium.Cartesian3.fromDegrees(-74.0, 40.7, 15000)  // NYC view
     });
   </script>
 </body>
