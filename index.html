@@ -1,53 +1,158 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <title>WorldView OSINT Globe</title>
-  <script src="https://cesium.com/downloads/cesiumjs/releases/1.139/Build/Cesium/Cesium.js"></script>
-  <link href="https://cesium.com/downloads/cesiumjs/releases/1.139/Build/Cesium/Widgets/widgets.css" rel="stylesheet">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>WorldView OSINT - 2026</title>
+  <link rel="stylesheet" href="https://cesium.com/downloads/cesiumjs/releases/1.120/Build/Cesium/Widgets/widgets.css" />
   <style>
-    html, body, #cesiumContainer {
-      height: 100%;
-      margin: 0;
-      padding: 0;
-      overflow: hidden;
-      background: #000;
-    }
+    body, html { margin:0; padding:0; height:100%; overflow:hidden; background:#000; font-family: 'VT323', monospace; }
+    #cesiumContainer { width:100%; height:100%; }
+    .hud { position:absolute; color:#0f0; pointer-events:none; }
+    #topbar { top:8px; left:50%; transform:translateX(-50%); font-size:1.4em; text-shadow:0 0 8px #0f0; }
+    #sidebar { left:12px; top:60px; width:280px; background:rgba(0,0,0,0.6); padding:12px; border:1px solid #0f0; }
+    #params { right:12px; top:60px; width:220px; background:rgba(0,0,0,0.6); padding:12px; border:1px solid #0f0; }
+    button, input { background:#000; color:#0f0; border:1px solid #0f0; font-family:inherit; cursor:pointer; }
+    .scanline { position:fixed; inset:0; pointer-events:none; background:repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,255,0,0.06) 2px, rgba(0,255,0,0.06) 4px); animation:scan 8s linear infinite; }
+    @keyframes scan { 0% { transform:translateY(-100%); } 100% { transform:translateY(100%); } }
   </style>
 </head>
 <body>
   <div id="cesiumContainer"></div>
+  <div class="hud" id="topbar">REC 2026-03-04 16:22:00Z • MISSION: ST-TH • NOFORN</div>
+  <div class="hud" id="sidebar">
+    <div>City: <select id="citySelect">
+      <option>Austin, TX</option><option>San Francisco, CA</option><option>New York, NY</option>
+      <option>London, UK</option><option>Tokyo, JP</option><option>Paris, FR</option>
+    </select></div>
+    <br/>
+    <button onclick="toggleCRT()">Toggle CRT</button>
+  </div>
+  <div class="hud" id="params">
+    Scanlines <input type="range" id="scanIntensity" min="0" max="1" step="0.1" value="0.4"/><br/>
+    Distortion <input type="range" id="distort" min="0" max="0.05" step="0.01" value="0.02"/><br/>
+    Noise <input type="range" id="noise" min="0" max="0.8" step="0.1" value="0.3"/>
+  </div>
+  <div class="scanline"></div>
 
-  <script>
-    // YOUR TOKEN HERE—paste the long eyJ... string from Cesium ion
-    Cesium.Ion.defaultAccessToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiIzZjgyMzUyOC0wOGZmLTQ3ODYtYmEyMi03MzJmY2NlNzRjZWMiLCJpZCI6Mzk3ODUwLCJpYXQiOjE3NzI2MTk4ODB9.Dw4OwCm6QyXl0jY5FXbogc-WlxGav8GtWP-1ArikgOE';
+  <script src="https://cesium.com/downloads/cesiumjs/releases/1.120/Build/Cesium/Cesium.js"></script>
+  <script type="module">
+    import * as Cesium from 'https://cesium.com/downloads/cesiumjs/releases/1.120/Build/Cesium/index.js';
 
-    // Create the viewer
+    // Replace with YOUR Google Maps API key
+    const GOOGLE_API_KEY = 'AIzaSyYourKeyHere';
+
+    Cesium.Ion.defaultAccessToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiIzZjgyMzUyOC0wOGZmLTQ3ODYtYmEyMi03MzJmY2NlNzRjZWMiLCJpZCI6Mzk3ODUwLCJpYXQiOjE3NzI2MTk4ODB9.Dw4OwCm6QyXl0jY5FXbogc-WlxGav8GtWP-1ArikgOE'; // optional, skip for now
+
     const viewer = new Cesium.Viewer('cesiumContainer', {
-      terrain: Cesium.Terrain.fromWorldTerrain(),  // real hills
-      imageryProvider: false,                      // no flat map
-      baseLayerPicker: false,                      // hide picker
-      geocoder: Cesium.IonGeocodeProviderType.GOOGLE,  // city search
-      fullscreenButton: false                      // optional
+      terrain: Cesium.Terrain.fromWorldTerrain(),
+      baseLayerPicker: false,
+      geocoder: false,
+      homeButton: false,
+      sceneModePicker: false,
+      navigationHelpButton: false,
+      selectionIndicator: false,
+      timeline: false,
+      animation: false,
+      skyBox: false,
+      fullscreenButton: false,
     });
 
-    // Add photorealistic 3D buildings—like Google Earth
+    // Google Photorealistic 3D Tiles (needs API key)
     async function addPhotoreal() {
       try {
-        const tileset = await Cesium.createGooglePhotorealistic3DTileset();
+        const tileset = await Cesium.createGooglePhotorealistic3DTileset({
+          apiKey: GOOGLE_API_KEY
+        });
         viewer.scene.primitives.add(tileset);
-        // Auto-zoom to a nice spot (you can change coords)
-        viewer.zoomTo(tileset);
-      } catch (err) {
-        console.log('Photoreal load issue:', err);
+      } catch (e) {
+        console.warn('Photoreal failed—check key:', e);
+        // Fallback: OSM buildings
+        viewer.scene.primitives.add(Cesium.createOsmBuildings());
       }
     }
     addPhotoreal();
 
-    // Start zoomed in somewhere cool—edit degrees if you want
-    viewer.camera.flyTo({
-      destination: Cesium.Cartesian3.fromDegrees(-74.0, 40.7, 15000)  // NYC view
+    // Simple CRT shader (post-process)
+    const crtStage = new Cesium.PostProcessStage({
+      fragmentShader: `
+        uniform sampler2D colorTexture;
+        varying vec2 v_textureCoordinates;
+        uniform float scanIntensity;
+        uniform float distortion;
+        uniform float noise;
+
+        float random(vec2 st) {
+          return fract(sin(dot(st.xy, vec2(12.9898,78.233))) * 43758.5453123);
+        }
+
+        void main() {
+          vec2 uv = v_textureCoordinates;
+          uv.x += distortion * (random(uv) - 0.5);
+          vec4 color = texture2D(colorTexture, uv);
+
+          // Scanlines
+          float scan = sin(uv.y * 800.0) * scanIntensity;
+          color.rgb += vec3(scan);
+
+          // Noise
+          color.rgb += (random(uv * 100.0) - 0.5) * noise;
+
+          // Green phosphor glow
+          color.rgb *= vec3(0.8, 1.2, 0.8);
+
+          gl_FragColor = color;
+        }
+      `,
+      uniforms: {
+        scanIntensity: () => document.getElementById('scanIntensity').value,
+        distortion: () => document.getElementById('distort').value,
+        noise: () => document.getElementById('noise').value
+      }
     });
+    viewer.scene.postProcessStages.add(crtStage);
+
+    // Live aircraft layer (OpenSky, updates every 10s)
+    let aircraftEntities = [];
+    async function loadAircraft() {
+      try {
+        const res = await fetch('https://opensky-network.org/api/states/all');
+        const data = await res.json();
+        aircraftEntities.forEach(e => viewer.entities.remove(e));
+        aircraftEntities = [];
+
+        data.states?.forEach(state => {
+          const = state;
+          if (!lon || !lat) return;
+
+          const color = heading > 0 && vel > 200 ? Cesium.Color.RED : Cesium.Color.CYAN; // rough military/civil guess
+          const entity = viewer.entities.add({
+            position: Cesium.Cartesian3.fromDegrees(lon, lat, alt * 0.3048), // ft to m
+            point: { pixelSize: 8, color },
+            label: { text: callsign || '???', font: '14px VT323', fillColor: color }
+          });
+          aircraftEntities.push(entity);
+        });
+      } catch (e) { console.log('Aircraft fetch fail:', e); }
+    }
+    setInterval(loadAircraft, 10000);
+    loadAircraft();
+
+    // City fly-to
+    document.getElementById('citySelect').onchange = e => {
+      const cities = {
+        'Austin, TX': [30.2672, -97.7431, 2000],
+        'San Francisco, CA': [37.7749, -122.4194, 1500 40.7128, -74.0060, 3000 51.5074, -0.1278, 2500 35.6762, 139.6503, 1800],
+        'Paris, FR': [48.8566, 2.3522, 2200]
+      };
+      const = cities ;
+      viewer.camera.flyTo({ destination: Cesium.Cartesian3.fromDegrees(lon, lat, alt) });
+    };
+
+    // Toggle CRT (simple on/off)
+    window.toggleCRT = () => {
+      crtStage.enabled = !crtStage.enabled;
+    };
   </script>
 </body>
 </html>
