@@ -1,31 +1,152 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>WorldView OSINT - TOP SECRET // NOFORN</title>
-    <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
-    <script src="https://cesium.com/downloads/cesiumjs/releases/1.120/Build/Cesium/Cesium.js"></script>
-    <script src="https://unpkg.com/satellite.js@4.1.1/dist/satellite.min.js"></script>
-    <style>
-      body { margin: 0; font-family: 'VT323', monospace; background: #000; color: #0f0; overflow: hidden; }
-      #root { height: 100vh; position: relative; }
-      #cesiumContainer { width: 100%; height: 100%; }
-      .hud { position: absolute; pointer-events: none; z-index: 10; }
-      #topbar { top: 8px; left: 50%; transform: translateX(-50%); font-size: 1.4em; text-shadow: 0 0 8px #0f0; background: rgba(0,0,0,0.7); padding: 4px 12px; border: 1px solid #0f0; }
-      #sidebar { left: 12px; top: 60px; width: 280px; background: rgba(0,0,0,0.6); padding: 12px; border: 1px solid #0f0; }
-      #params { right: 12px; top: 60px; width: 220px; background: rgba(0,0,0,0.6); padding: 12px; border: 1px solid #0f0; }
-      button, select, input { background: #000; color: #0f0; border: 1px solid #0f0; font-family: inherit; cursor: pointer; margin: 2px; }
-      input[type=range] { width: 100%; }
-      .scanline { position: fixed; inset: 0; pointer-events: none; background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,255,0,0.06) 2px, rgba(0,255,0,0.06) 4px); animation: scan 8s linear infinite; z-index: 5; }
-      @keyframes scan { 0% { transform: translateY(-100%); } 100% { transform: translateY(100%); } }
-      .preset-btn { background: #0f0; color: #000; }
-    </style>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.jsx"></script>
-    <div class="scanline" id="scanOverlay"></div>
-  </body>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>WorldView OSINT - 2026</title>
+  <link rel="stylesheet" href="https://cesium.com/downloads/cesiumjs/releases/1.120/Build/Cesium/Widgets/widgets.css" />
+  <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
+  <style>
+    body, html { margin:0; padding:0; height:100%; overflow:hidden; background:#000; font-family:'VT323', monospace; }
+    #cesiumContainer { width:100%; height:100%; }
+    .hud { position:absolute; color:#0f0; pointer-events:auto; text-shadow:0 0 6px #0f0; }
+    #topbar { top:10px; left:50%; transform:translateX(-50%); font-size:1.5em; }
+    #sidebar { left:15px; top:70px; width:260px; background:rgba(0,0,0,0.65); padding:15px; border:1px solid #0f0; border-radius:4px; }
+    #params { right:15px; top:70px; width:200px; background:rgba(0,0,0,0.65); padding:15px; border:1px solid #0f0; border-radius:4px; }
+    button, select, input { background:#000; color:#0f0; border:1px solid #0f0; font:inherit; padding:4px 8px; cursor:pointer; }
+    .scanline { position:fixed; inset:0; pointer-events:none; background:repeating-linear-gradient(transparent 0, transparent 2px, rgba(0,255,0,0.07) 2px, rgba(0,255,0,0.07) 4px); animation:scan 10s linear infinite; opacity:0.6; }
+    @keyframes scan { 0% {transform:translateY(-100%);} 100% {transform:translateY(100%);} }
+    .static { position:fixed; inset:0; pointer-events:none; background:url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><filter id="n"><feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="3" /><feColorMatrix type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.15 0"/></filter><rect width="100%" height="100%" filter="url(%23n)" opacity="0.4"/></svg>'); animation:noise 0.5s steps(5) infinite; }
+    @keyframes noise { 0% {background-position:0 0;} 100% {background-position:100px 100px;} }
+  </style>
+</head>
+<body>
+  <div id="cesiumContainer"></div>
+  <div class="hud" id="topbar">REC 2026-03-05 20:45:00Z • ST-TH • NOFORN</div>
+  <div class="hud" id="sidebar">
+    <div>City: <select id="citySelect">
+      <option value="Austin">Austin, TX</option>
+      <option value="SanFrancisco">San Francisco, CA</option>
+      <option value="NewYork">New York, NY</option>
+      <option value="London">London, UK</option>
+      <option value="Tokyo">Tokyo, JP</option>
+      <option value="Paris">Paris, FR</option>
+      <option value="Dubai">Dubai, AE</option>
+    </select></div>
+    <br/>
+    <button onclick="toggleCRT()">Toggle CRT Glitch</button>
+  </div>
+  <div class="hud" id="params">
+    Scanlines: <input type="range" id="scan" min="0" max="1" step="0.05" value="0.6"/><br/>
+    Distort: <input type="range" id="distort" min="0" max="0.06" step="0.005" value="0.025"/><br/>
+    Noise: <input type="range" id="noise" min="0" max="1" step="0.1" value="0.4"/>
+  </div>
+  <div class="scanline"></div>
+  <div class="static"></div>
+
+  <script src="https://cesium.com/downloads/cesiumjs/releases/1.120/Build/Cesium/Cesium.js"></script>
+  <script type="module">
+    // === YOUR CESIUM ION TOKEN HERE (optional but recommended for OSM buildings + terrain) ===
+    Cesium.Ion.defaultAccessToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiIzZjgyMzUyOC0wOGZmLTQ3ODYtYmEyMi03MzJmY2NlNzRjZWMiLCJpZCI6Mzk3ODUwLCJpYXQiOjE3NzI2MTk4ODB9.Dw4OwCm6QyXl0jY5FXbogc-WlxGav8GtWP-1ArikgOE';  // ← **CHANGE THIS LINE** — copy from https://ion.cesium.com/tokens (your default one)
+
+    const viewer = new Cesium.Viewer('cesiumContainer', {
+      terrain: Cesium.Terrain.fromWorldTerrain(),
+      baseLayerPicker: false, geocoder: false, homeButton: false,
+      sceneModePicker: false, navigationHelpButton: false,
+      selectionIndicator: false, timeline: false, animation: false,
+      skyBox: false, fullscreenButton: false
+    });
+
+    // Add OSM Buildings (3D city models) - works best with token
+    async function addBuildings() {
+      try {
+        const buildings = await Cesium.createOsmBuildingsAsync();
+        viewer.scene.primitives.add(buildings);
+      } catch (e) {
+        console.log('Buildings load issue (token or network?):', e);
+      }
+    }
+    addBuildings();
+
+    // Simple CRT post-process shader
+    const crtStage = new Cesium.PostProcessStage({
+      fragmentShader: `
+        uniform sampler2D colorTexture;
+        varying vec2 v_textureCoordinates;
+        uniform float scanIntensity;
+        uniform float distortion;
+        uniform float noiseAmount;
+
+        float random(vec2 st) {
+          return fract(sin(dot(st.xy, vec2(12.9898,78.233))) * 43758.5453123);
+        }
+
+        void main() {
+          vec2 uv = v_textureCoordinates;
+          uv.x += distortion * (random(uv) - 0.5);
+          vec4 color = texture2D(colorTexture, uv);
+
+          float scan = sin(uv.y * 800.0) * scanIntensity;
+          color.rgb += vec3(scan);
+
+          color.rgb += (random(uv * 100.0) - 0.5) * noiseAmount;
+
+          color.rgb *= vec3(0.8, 1.2, 0.8); // green phosphor
+          gl_FragColor = color;
+        }
+      `,
+      uniforms: {
+        scanIntensity: () => parseFloat(document.getElementById('scan').value),
+        distortion: () => parseFloat(document.getElementById('distort').value),
+        noiseAmount: () => parseFloat(document.getElementById('noise').value)
+      }
+    });
+    viewer.scene.postProcessStages.add(crtStage);
+
+    // Live aircraft from OpenSky (no key needed)
+    let aircraft = [];
+    async function updateAircraft() {
+      try {
+        const res = await fetch('https://opensky-network.org/api/states/all');
+        const data = await res.json();
+        aircraft.forEach(e => viewer.entities.remove(e));
+        aircraft = [];
+        data.states?.forEach(s => {
+          const [icao, callsign, , , , lon, lat, alt, , vel, heading] = s;
+          if (!lon || !lat) return;
+          const color = (vel > 200 && heading) ? Cesium.Color.RED : Cesium.Color.CYAN;
+          const entity = viewer.entities.add({
+            position: Cesium.Cartesian3.fromDegrees(lon, lat, (alt || 0) * 0.3048),
+            point: { pixelSize: 8, color },
+            label: { text: callsign?.trim() || '???', font: '14px VT323', fillColor: color, pixelOffset: new Cesium.Cartesian2(0, -20) }
+          });
+          aircraft.push(entity);
+        });
+      } catch (e) { console.log('Aircraft update failed:', e); }
+    }
+    setInterval(updateAircraft, 12000);
+    updateAircraft();
+
+    // City fly-to
+    document.getElementById('citySelect').onchange = e => {
+      const coords = {
+        Austin: [30.2672, -97.7431, 2500],
+        SanFrancisco: [37.7749, -122.4194, 2000],
+        NewYork: [40.7128, -74.0060, 3000],
+        London: [51.5074, -0.1278, 2500],
+        Tokyo: [35.6762, 139.6503, 2000],
+        Paris: [48.8566, 2.3522, 2200],
+        Dubai: [25.2048, 55.2708, 1800]
+      }[e.target.value];
+      if (coords) viewer.camera.flyTo({ destination: Cesium.Cartesian3.fromDegrees(...coords) });
+    };
+
+    window.toggleCRT = () => { crtStage.enabled = !crtStage.enabled; };
+
+    // Update fake REC time every second
+    setInterval(() => {
+      document.getElementById('topbar').textContent = `REC ${new Date().toISOString().slice(0,19).replace('T',' ')}Z • ST-TH • NOFORN`;
+    }, 1000);
+  </script>
+</body>
 </html>
